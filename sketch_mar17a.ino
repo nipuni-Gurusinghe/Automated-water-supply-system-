@@ -1,10 +1,9 @@
 #include <Keypad.h>
 #include <Servo.h>
 
-#define SERVO_PIN 10  // Servo motor connected to pin 10
+#define SERVO_PIN 10  
 Servo gateServo;
 
-// Keypad configuration
 const byte ROWS = 4;
 const byte COLS = 4;
 char keys[ROWS][COLS] = {
@@ -13,24 +12,26 @@ char keys[ROWS][COLS] = {
   {'7', '8', '9', 'C'},
   {'*', '0', '#', 'D'}
 };
-byte rowPins[ROWS] = {2, 3, 4, 5};  
-byte colPins[COLS] = {6, 7, 8, 9};  
+byte rowPins[ROWS] = {2, 3, 4, 5};
+byte colPins[COLS] = {6, 7, 8, 9};
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 bool gateOpen = false;
 unsigned long closeTime = 0;
 
+String inputMinutes = ""; 
+
 void openGate(int minutes) {
-  gateServo.write(90);  // Open gate
+  gateServo.write(90);  
   gateOpen = true;
-  closeTime = millis() + (minutes * 60000);  // Calculate close time
+  closeTime = millis() + (minutes * 60000UL); 
   Serial.print("Gate Open for ");
   Serial.print(minutes);
   Serial.println(" minutes");
 }
 
 void closeGate() {
-  gateServo.write(0);  // Close gate
+  gateServo.write(0);  
   gateOpen = false;
   Serial.println("Gate Closed");
 }
@@ -38,23 +39,43 @@ void closeGate() {
 void setup() {
   Serial.begin(9600);
   gateServo.attach(SERVO_PIN);
-  gateServo.write(0);  // Ensure the gate starts closed
+  gateServo.write(0); 
 }
 
 void loop() {
   char key = keypad.getKey();
 
-  if (key >= '1' && key <= '9') {
-    int minutes = key - '0';  // Convert character to integer
-    openGate(minutes);
+  if (key) {  
+    if (key >= '0' && key <= '9') {
+      inputMinutes += key; 
+      Serial.print("Input so far: ");
+      Serial.println(inputMinutes);
+    }
+    else if (key == '#') {
+      if (inputMinutes.length() > 0) {
+        int minutes = inputMinutes.toInt();  
+        if (minutes > 0) {
+          openGate(minutes);
+        } else {
+          Serial.println("Invalid input!");
+        }
+        inputMinutes = ""; 
+      }
+    }
+    else if (key == 'A' && gateOpen) {
+      Serial.println("Emergency Close Activated");
+      closeGate();
+      inputMinutes = ""; 
+    }
+    else if (key == '*') {
+      
+      inputMinutes = "";
+      Serial.println("Input cleared");
+    }
   }
 
+  
   if (gateOpen && millis() >= closeTime) {
-    closeGate();
-  }
-
-  if (key == 'A' && gateOpen) {
-    Serial.println("Emergency Close Activated");
     closeGate();
   }
 }
